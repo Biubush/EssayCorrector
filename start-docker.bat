@@ -32,9 +32,42 @@ if %ERRORLEVEL% NEQ 0 (
     SET DOCKER_COMPOSE_CMD=docker compose
 )
 
+REM 初始化命令字符串
+SET CMD_STR=%DOCKER_COMPOSE_CMD% up -d
+
+REM 处理命令行参数（环境变量）
+SET PARSING_ARGS=true
+SET ARG_COUNT=0
+
+:parse_args
+IF "%~1"=="" GOTO execute_command
+IF "%~1"=="-e" (
+    IF "%~2"=="" (
+        echo [错误] -e 参数后需要提供环境变量
+        pause
+        exit /b 1
+    )
+    SET /A ARG_COUNT+=1
+    SET CMD_STR=%CMD_STR% -e %~2
+    SHIFT
+    SHIFT
+    GOTO parse_args
+)
+
+echo [错误] 未知参数: %~1
+pause
+exit /b 1
+
+:execute_command
+REM 如果有参数，提示用户
+IF %ARG_COUNT% GTR 0 (
+    echo 检测到 %ARG_COUNT% 个环境变量参数
+)
+
 REM 启动容器
 echo 正在启动服务...
-%DOCKER_COMPOSE_CMD% up -d
+echo 执行命令: %CMD_STR%
+%CMD_STR%
 
 REM 检查启动结果
 if %ERRORLEVEL% NEQ 0 (

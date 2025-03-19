@@ -27,9 +27,38 @@ else
     DOCKER_COMPOSE_CMD="docker compose"
 fi
 
+# 初始化命令字符串
+CMD_STR="$DOCKER_COMPOSE_CMD up -d"
+ARG_COUNT=0
+
+# 处理命令行参数（环境变量）
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -e)
+            if [[ -z "$2" || "$2" == -* ]]; then
+                echo "[错误] -e 参数后需要提供环境变量"
+                exit 1
+            fi
+            CMD_STR="$CMD_STR -e $2"
+            ARG_COUNT=$((ARG_COUNT+1))
+            shift 2
+            ;;
+        *)
+            echo "[错误] 未知参数: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# 如果有参数，提示用户
+if [ $ARG_COUNT -gt 0 ]; then
+    echo "检测到 $ARG_COUNT 个环境变量参数"
+fi
+
 # 启动容器
 echo "正在启动服务..."
-$DOCKER_COMPOSE_CMD up -d
+echo "执行命令: $CMD_STR"
+eval $CMD_STR
 
 # 检查启动结果
 if [ $? -ne 0 ]; then

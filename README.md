@@ -107,11 +107,11 @@ git clone https://github.com/biubush/EssayCorrector.git
 cd EssayCorrector
 
 # Windows系统使用
-.\start-docker.bat
+.\start-docker.bat -e AI_API_KEY=your_api_key -e PORT=8080
 
 # Linux/macOS系统使用
 chmod +x start-docker.sh
-./start-docker.sh
+./start-docker.sh -e AI_API_KEY=your_api_key -e PORT=8080
 ```
 
 如果一切正常，控制台将显示服务启动信息，然后访问 http://localhost:8329 即可使用服务。
