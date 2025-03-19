@@ -1,0 +1,57 @@
+version: '3'
+
+services:
+  essay-corrector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: biubush/essay-corrector:latest
+    container_name: essay-corrector
+    ports:
+      - "8329:8329"
+    volumes:
+      # 持久化存储数据库
+      - ./data:/app/data
+      # 持久化存储临时文件
+      - essay_corrector_temp:/tmp/essay_corrector_temp
+      # 提示词文件挂载 - 注意此文件可以包含复杂格式，系统已兼容
+      - ./prompts.txt:/app/prompts.txt
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8329
+      - TEMP_FOLDER=/tmp/essay_corrector_temp
+      # 设置工作模式，可选值：production, development
+      - MODE=production
+      # 应用配置
+      # - DEBUG=False
+      # - DATABASE_URI=sqlite:///data/tasks.db
+      # AI相关配置
+      # - AI_API_KEY=your_api_key_here
+      # - AI_MODEL=deepseek-chat
+      # - PROMPTS_FILE=/app/prompts.txt
+      # 定时任务配置
+      # - CLEANUP_INTERVAL_HOURS=24
+      # 文本处理配置
+      # - MAX_CHARS_PER_PARAGRAPH=3000
+      # 是否打印配置信息
+      # - PRINT_CONFIG=True
+    restart: unless-stopped
+    # 健康检查，确保容器正常运行
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8329/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 资源限制（可选）
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 1G
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 512M
+
+volumes:
+  essay_corrector_temp: 
