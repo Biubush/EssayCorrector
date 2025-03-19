@@ -1,4 +1,4 @@
-# 论文纠错系统 (Essay Corrector Pro)
+# 论文纠错助手 (Essay Corrector)
 
 一个基于AI的论文语法纠错工具，支持多种文档格式、实时进度反馈和批量处理功能。
 
