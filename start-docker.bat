@@ -32,48 +32,16 @@ if %ERRORLEVEL% NEQ 0 (
     SET DOCKER_COMPOSE_CMD=docker compose
 )
 
-REM 环境变量计数
-SET ARG_COUNT=0
-
-REM 处理命令行参数（环境变量）
-:parse_args
-IF "%~1"=="" GOTO execute_command
-IF "%~1"=="-e" (
-    IF "%~2"=="" (
-        echo [错误] -e 参数后需要提供环境变量
-        pause
-        exit /b 1
-    )
-    
-    REM 分割变量名和值
-    for /f "tokens=1,2 delims==" %%a in ("%~2") do (
-        SET ENV_KEY=%%a
-        SET ENV_VALUE=%%b
-    )
-    
-    REM 设置环境变量
-    SET %ENV_KEY%=%ENV_VALUE%
-    echo 设置环境变量: %ENV_KEY%=%ENV_VALUE%
-    
-    SET /A ARG_COUNT+=1
-    SHIFT
-    SHIFT
-    GOTO parse_args
-) ELSE (
-    echo [错误] 未知参数: %~1
+REM 检查docker-compose.yml文件是否存在
+if not exist docker-compose.yml (
+    echo [错误] 未找到docker-compose.yml文件
+    echo 请确保您在正确的目录下运行此脚本
     pause
     exit /b 1
 )
 
-:execute_command
-REM 如果有参数，提示用户
-IF %ARG_COUNT% GTR 0 (
-    echo 检测到 %ARG_COUNT% 个环境变量参数
-)
-
 REM 启动容器
 echo 正在启动服务...
-echo 执行命令: %DOCKER_COMPOSE_CMD% up -d
 %DOCKER_COMPOSE_CMD% up -d
 
 REM 检查启动结果
@@ -85,4 +53,6 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo 服务已成功启动!
 echo 请访问 http://localhost:8329 使用论文纠错系统
+echo.
+echo 提示：如需修改配置，请编辑docker-compose.yml文件后重新运行此脚本
 pause 

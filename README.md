@@ -107,11 +107,11 @@ git clone https://github.com/biubush/EssayCorrector.git
 cd EssayCorrector
 
 # Windows系统使用
-.\start-docker.bat -e AI_API_KEY=your_api_key -e PORT=8080
+.\start-docker.bat
 
 # Linux/macOS系统使用
 chmod +x start-docker.sh
-./start-docker.sh -e AI_API_KEY=your_api_key -e PORT=8080
+./start-docker.sh
 ```
 
 如果一切正常，控制台将显示服务启动信息，然后访问 http://localhost:8329 即可使用服务。
@@ -132,14 +132,14 @@ environment:
   - PROMPTS_FILE=/app/custom_prompts.txt  # 自定义提示词文件路径
 ```
 
-您还可以通过`-e`参数在启动命令中设置环境变量：
+如果您需要修改配置，请直接编辑`docker-compose.yml`文件，然后重新启动容器：
 
 ```bash
 # Windows
-.\start-docker.bat -e AI_API_KEY=your_api_key -e PORT=8080
+.\start-docker.bat
 
 # Linux/macOS
-./start-docker.sh -e AI_API_KEY=your_api_key -e PORT=8080
+./start-docker.sh
 ```
 
 ### 方法2：通用引导脚本安装
