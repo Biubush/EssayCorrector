@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档纠错Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        '2xl': '1536px',
+                        '3xl': '1920px',
+                    },
+                }
+            }
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- 引入 FilePond 的 CSS 和 JS -->
+    <link href="https://unpkg.com/filepond/dist/filepond.css" rel="stylesheet">
+    <script src="https://unpkg.com/filepond/dist/filepond.js"></script>
+    <!-- 引入 AOS 和 GSAP -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <!-- 引入 SweetAlert2 -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.2/dist/sweetalert2.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.2/dist/sweetalert2.all.min.js"></script>
+    <!-- 引入 FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <!-- SocketIO 客户端 -->
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        /* 隐藏 FilePond 的版权信息 */
+        .filepond--credits {
+            display: none !important;
+        }
+        
+        /* 自定义滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* 差异显示样式 */
+        .diff-added {
+            background-color: #d1fae5;
+            color: #047857;
+            font-weight: bold;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+        
+        .diff-removed {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            font-weight: bold;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+        
+        .diff-modified {
+            background-color: #fef3c7;
+            color: #b45309;
+            font-weight: bold;
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+        
+        /* 表格响应式样式 */
+        @media (min-width: 1024px) {
+            .task-table th, .task-table td {
+                padding: 0.75rem 1rem;
+            }
+        }
+        
+        /* 自定义 FilePond 容器宽度 */
+        @media (min-width: 1024px) {
+            .filepond--root {
+                max-width: 80%;
+                margin-left: auto;
+                margin-right: auto;
+            }
+        }
+        
+        @media (min-width: 1280px) {
+            .filepond--root {
+                max-width: 70%;
+            }
+        }
+        
+        @media (min-width: 1536px) {
+            .filepond--root {
+                max-width: 60%;
+            }
+        }
+        
+        @media (min-width: 1920px) {
+            .filepond--root {
+                max-width: 50%;
+            }
+        }
+        
+        /* 竖状胶囊形状状态标签 */
+        .status-capsule {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 60px;
+            border-radius: 9px;
+            padding: 4px 0;
+            margin: 0 auto;
+        }
+        
+        .status-capsule-text {
+            writing-mode: vertical-lr;
+            text-orientation: upright;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: -2px;
+        }
+        
+        .status-success {
+            background-color: #DEF7EC;
+            color: #046C4E;
+        }
+        
+        .status-failed {
+            background-color: #FDE8E8;
+            color: #9B1C1C;
+        }
+        
+        /* 进度条样式 */
+        .progress-container {
+            height: 6px;
+            width: 100%;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            background-color: #3B82F6;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+        }
+        
+        /* 进度为0时的样式 */
+        .progress-bar-empty {
+            width: 0%;
+            animation: pulse 2s infinite;
+        }
+        
+        /* 进度条脉冲动画 */
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        /* 迷你进度行 */
+        .mini-progress-row {
+            background-color: #EFF6FF;
+            font-size: 0.8rem;
+        }
+        
+        .progress-info-flex {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 8px;
+        }
+        
+        .progress-info-flex > span {
+            white-space: nowrap;
+        }
+        
+        .progress-flex-grow {
+            flex-grow: 1;
+            min-width: 100px;
+        }
+        
+        /* 移动端任务详情布局调整 */
+        @media (max-width: 639px) {
+            /* 重置表头在移动端的显示 */
+            #task-modal table thead {
+                display: none;
+            }
+            
+            /* 将每行改为上下布局的卡片 */
+            #task-modal table tbody tr {
+                display: flex;
+                flex-direction: column;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                margin-bottom: 16px;
+                padding: 8px;
+            }
+            
+            /* 调整单元格样式 */
+            #task-modal table td {
+                display: block;
+                width: 100%;
+                padding: 8px;
+                border: none;
+            }
+            
+            /* 给每个单元格添加标题 */
+            #task-modal table td:nth-child(2)::before {
+                content: "纠错前：";
+                display: block;
+                font-weight: bold;
+                margin-bottom: 4px;
+                color: #4B5563;
+            }
+            
+            #task-modal table td:nth-child(3)::before {
+                content: "纠错后：";
+                display: block;
+                font-weight: bold;
+                margin-bottom: 4px;
+                color: #4B5563;
+            }
+            
+            /* 调整复选框位置 */
+            #task-modal table td:first-child {
+                padding: 4px 8px;
+                border-bottom: 1px solid #e5e7eb;
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12">
+    <div class="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-md w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-3xl 2xl:max-w-5xl 3xl:max-w-6xl mx-auto" data-aos="fade-up">
+        <h1 class="text-2xl md:text-3xl font-bold mb-4 text-center">文档纠错助手-DeepSeek驱动</h1>
+        <p class="text-center text-gray-600 mb-4">支持Word、PDF、TXT、CSV、Excel、Markdown和PowerPoint等多种格式</p>
+        <form id="upload-form" enctype="multipart/form-data" class="space-y-4">
+            <!-- 使用 FilePond 的 input -->
+            <div class="mx-auto">
+                <input type="file" name="file" id="file" class="filepond">
+            </div>
+            <div class="flex justify-center">
+                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition duration-300 ease-in-out text-sm md:text-base w-full md:w-2/3 lg:w-1/2 xl:w-2/5 2xl:w-1/3">提交</button>
+            </div>
+        </form>
+        
+        <!-- 任务列表部分 - 改为上下布局 -->
+        <div class="mt-8 grid grid-cols-1 gap-6">
+            <!-- 正在运行的任务 -->
+            <div data-aos="fade-up" data-aos-delay="100">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xl font-bold">正在运行的任务</h2>
+                    <button id="refresh-running-tasks" class="text-gray-500 hover:text-blue-500 transition-colors duration-300" title="刷新任务列表">
+                        <i class="fas fa-sync-alt fa-lg"></i>
+                    </button>
+                </div>
+                <div class="overflow-auto max-h-64 border border-gray-300 rounded">
+                    <table class="min-w-full bg-white task-table">
+                        <thead class="bg-gray-50">
+                            <tr class="text-left">
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">文件名</th>
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">创建时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="running-tasks" class="divide-y divide-gray-200">
+                            <!-- 动态生成表格行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 已完成的任务 -->
+            <div data-aos="fade-up" data-aos-delay="200">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xl font-bold">已完成的任务</h2>
+                    <button id="refresh-completed-tasks" class="text-gray-500 hover:text-blue-500 transition-colors duration-300" title="刷新任务列表">
+                        <i class="fas fa-sync-alt fa-lg"></i>
+                    </button>
+                </div>
+                <div class="overflow-auto max-h-64 border border-gray-300 rounded">
+                    <table class="min-w-full bg-white task-table">
+                        <thead class="bg-gray-50">
+                            <tr class="text-left">
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">文件名</th>
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">创建时间</th>
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">完成时间</th>
+                                <th class="py-2 px-3 md:px-4 text-sm md:text-base">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="completed-tasks" class="divide-y divide-gray-200">
+                            <!-- 动态生成表格行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情弹出框 -->
+    <div id="task-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+        <div class="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-md w-full max-w-xs sm:max-w-sm md:max-w-lg lg:max-w-2xl xl:max-w-5xl 2xl:max-w-6xl 3xl:max-w-7xl mx-auto overflow-hidden" id="task-modal-content">
+            <h3 class="text-lg sm:text-xl md:text-2xl font-bold mb-3 md:mb-4">任务详情</h3>
+            <div class="overflow-auto max-h-80 sm:max-h-96 md:max-h-[32rem]">
+                <table class="min-w-full bg-white task-table">
+                    <thead class="bg-gray-50">
+                        <tr class="text-left">
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base">选择</th>
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base w-5/12">纠错前</th>
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base w-5/12">纠错后</th>
+                        </tr>
+                    </thead>
+                    <tbody id="task-details" class="divide-y divide-gray-200">
+                        <!-- 动态生成表格行 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                <button id="export-json" class="bg-green-500 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded hover:bg-green-600 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base">导出</button>
+                <button id="close-modal" class="bg-red-500 text-white py-1.5 sm:py-2 px-3 sm:px-4 rounded hover:bg-red-600 transition duration-300 ease-in-out text-xs sm:text-sm md:text-base">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // 初始化 AOS
+            AOS.init();
+            
+            // 初始化 Socket.IO
+            const socket = io();
+            
+            // 保存每个任务的进度信息
+            const taskProgress = {};
+            
+            // 调试用：显示Socket.IO连接状态
+            socket.on('connect', function() {
+                console.log('Socket.IO已连接，ID：', socket.id);
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Socket.IO已断开连接');
+            });
+            
+            socket.on('connect_error', function(error) {
+                console.error('Socket.IO连接错误:', error);
+            });
+            
+            // SocketIO 监听任务进度更新
+            socket.on('task_progress', function(data) {
+                console.log('收到进度更新:', data);
+                // 保存/更新任务进度信息
+                taskProgress[data.task_id] = data;
+                
+                // 更新UI上的进度显示
+                updateTaskProgress(data.task_id);
+            });
+            
+            // SocketIO 监听任务信息事件 - 用于初始化任务状态
+            socket.on('task_info', function(data) {
+                console.log('收到任务信息:', data);
+                
+                // 检查任务是否已经在UI中显示
+                const taskId = data.task_id;
+                const $existingTask = $(`.task-row[data-task-id="${taskId}"]`);
+                
+                // 如果任务尚未在UI中显示，则添加任务
+                if ($existingTask.length === 0) {
+                    console.log('添加新任务到UI:', data);
+                    
+                    let createdAt = new Date(data.created_at).toLocaleString();
+                    if (createdAt === "Invalid Date") {
+                        createdAt = new Date().toLocaleString();
+                    }
+                    
+                    // 添加到运行中任务列表
+                    $('#running-tasks').prepend(
+                        `<tr class="task-row hover:bg-gray-50" data-task-id="${taskId}">
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${data.filename}</td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${createdAt}</td>
+                        </tr>`
+                    );
+                    
+                    // 如果有任务进度数据，立即创建进度行
+                    if (taskProgress[taskId]) {
+                        updateTaskProgress(taskId);
+                    } else {
+                        // 否则创建默认进度行
+                        const progressRowId = `progress-${taskId}`;
+                        const $progressRow = $(`<tr id="${progressRowId}" class="mini-progress-row">
+                            <td colspan="2" class="py-2 px-3">
+                                <div class="progress-info-flex">
+                                    <span class="font-medium">进度: <span class="progress-text">0.0%</span></span>
+                                    <div class="progress-container progress-flex-grow">
+                                        <div class="progress-bar progress-bar-empty" style="width: 0%"></div>
+                                    </div>
+                                    <span><span class="current-text">0</span>/<span class="total-text">1</span> 段</span>
+                                    <span>剩余: <span class="estimated-time">计算中...</span></span>
+                                </div>
+                            </td>
+                        </tr>`);
+                        
+                        // 插入到任务行之后
+                        $(`.task-row[data-task-id="${taskId}"]`).after($progressRow);
+                    }
+                }
+            });
+            
+            // SocketIO 监听任务完成事件
+            socket.on('task_complete', function(data) {
+                console.log('任务完成:', data);
+                
+                // 直接通过socket.io更新UI，而非刷新任务列表
+                const taskId = data.task_id;
+                
+                // 找到该任务的行及进度行
+                const $taskRow = $(`.task-row[data-task-id="${taskId}"]`);
+                const $progressRow = $(`#progress-${taskId}`);
+                
+                if ($taskRow.length > 0) {
+                    // 从运行中任务移动到已完成任务
+                    let filename = data.filename;
+                    let createdAt = new Date(data.created_at).toLocaleString();
+                    let completedAt = new Date(data.completed_at).toLocaleString();
+                    
+                    // 如果服务器没发送这些信息，就从现有行获取
+                    if (!filename) {
+                        filename = $taskRow.find('td:first-child').text();
+                    }
+                    if (!createdAt || createdAt === "Invalid Date") {
+                        createdAt = $taskRow.find('td:last-child').text();
+                    }
+                    if (!completedAt || completedAt === "Invalid Date") {
+                        completedAt = new Date().toLocaleString();
+                    }
+                    
+                    // 移除原任务行和进度行
+                    $taskRow.remove();
+                    $progressRow.remove();
+                    
+                    // 添加到完成任务列表
+                    $('#completed-tasks').prepend(
+                        `<tr class="hover:bg-gray-50">
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base"><button class="text-blue-500 hover:text-blue-700 hover:underline task-detail" data-task-id="${taskId}">${filename}</button></td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${createdAt}</td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${completedAt}</td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">
+                                <div class="status-capsule status-success">
+                                    <span class="status-capsule-text">成功</span>
+                                </div>
+                            </td>
+                        </tr>`
+                    );
+                }
+                
+                // 使用Swal2显示任务完成通知
+                Swal.fire({
+                    icon: 'success',
+                    title: '任务已完成',
+                    text: '文档纠错任务已成功完成！',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            });
+            
+            // SocketIO 监听任务错误事件
+            socket.on('task_error', function(data) {
+                console.log('任务错误:', data);
+                
+                // 直接通过socket.io更新UI，而非刷新任务列表
+                const taskId = data.task_id;
+                
+                // 找到该任务的行及进度行
+                const $taskRow = $(`.task-row[data-task-id="${taskId}"]`);
+                const $progressRow = $(`#progress-${taskId}`);
+                
+                if ($taskRow.length > 0) {
+                    // 从运行中任务移动到失败任务
+                    let filename = data.filename;
+                    let createdAt = new Date(data.created_at).toLocaleString();
+                    let completedAt = new Date(data.completed_at).toLocaleString();
+                    
+                    // 如果服务器没发送这些信息，就从现有行获取
+                    if (!filename) {
+                        filename = $taskRow.find('td:first-child').text();
+                    }
+                    if (!createdAt || createdAt === "Invalid Date") {
+                        createdAt = $taskRow.find('td:last-child').text();
+                    }
+                    if (!completedAt || completedAt === "Invalid Date") {
+                        completedAt = new Date().toLocaleString();
+                    }
+                    
+                    // 移除原任务行和进度行
+                    $taskRow.remove();
+                    $progressRow.remove();
+                    
+                    // 添加到完成任务列表
+                    $('#completed-tasks').prepend(
+                        `<tr class="hover:bg-gray-50">
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base"><button class="text-blue-500 hover:text-blue-700 hover:underline task-detail" data-task-id="${taskId}">${filename}</button></td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${createdAt}</td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">${completedAt}</td>
+                            <td class="py-2 px-3 md:px-4 text-sm md:text-base">
+                                <div class="status-capsule status-failed">
+                                    <span class="status-capsule-text">失败</span>
+                                </div>
+                            </td>
+                        </tr>`
+                    );
+                }
+                
+                // 使用Swal2显示任务错误通知
+                Swal.fire({
+                    icon: 'error',
+                    title: '任务失败',
+                    text: `处理文档时出错: ${data.error}`,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true
+                });
+            });
+            
+            // 更新特定任务的进度显示
+            function updateTaskProgress(taskId) {
+                const data = taskProgress[taskId];
+                if (!data) return;
+                
+                console.log('更新任务进度显示:', taskId, data);
+                
+                // 检查是否已有进度行，如果没有则创建
+                let progressRowId = `progress-${taskId}`;
+                let $progressRow = $(`#${progressRowId}`);
+                
+                // 进度条样式类，0%时使用脉冲动画
+                const progressBarClass = data.progress <= 0 ? 'progress-bar progress-bar-empty' : 'progress-bar';
+                
+                if ($progressRow.length === 0) {
+                    console.log('创建新的进度行');
+                    // 为该任务创建迷你进度显示行（单行紧凑版）
+                    $progressRow = $(`
+                        <tr id="${progressRowId}" class="mini-progress-row">
+                            <td colspan="2" class="py-2 px-3">
+                                <div class="progress-info-flex">
+                                    <span class="font-medium">进度: <span class="progress-text">${data.progress.toFixed(1)}%</span></span>
+                                    <div class="progress-container progress-flex-grow">
+                                        <div class="${progressBarClass}" style="width: ${data.progress}%"></div>
+                                    </div>
+                                    <span><span class="current-text">${data.current}</span>/<span class="total-text">${data.total}</span> 段</span>
+                                    <span>剩余: <span class="estimated-time">${data.estimated_time}</span></span>
+                                </div>
+                            </td>
+                        </tr>
+                    `);
+                    
+                    // 找到该任务的行并在其后插入进度行
+                    const $taskRow = $(`.task-row[data-task-id="${taskId}"]`);
+                    if ($taskRow.length > 0) {
+                        console.log('找到任务行，插入进度行');
+                        $progressRow.insertAfter($taskRow);
+                    } else {
+                        console.log('未找到任务行，尝试使用部分ID匹配');
+                        // 尝试使用部分ID匹配
+                        $(`#running-tasks tr`).each(function() {
+                            const $row = $(this);
+                            const rowTaskId = $row.data('task-id');
+                            if (rowTaskId && rowTaskId.includes(taskId.substring(0, 8))) {
+                                console.log('使用部分ID匹配找到任务行');
+                                $progressRow.insertAfter($row);
+                                return false; // 退出循环
+                            }
+                        });
+                    }
+                } else {
+                    console.log('更新现有进度行');
+                    // 更新现有进度行
+                    $progressRow.find('.progress-text').text(`${data.progress.toFixed(1)}%`);
+                    
+                    // 更新进度条类名和宽度
+                    const $progressBar = $progressRow.find('.progress-bar');
+                    $progressBar.attr('class', progressBarClass);
+                    $progressBar.css('width', `${data.progress}%`);
+                    
+                    $progressRow.find('.current-text').text(data.current);
+                    $progressRow.find('.total-text').text(data.total);
+                    $progressRow.find('.elapsed-time').text(data.elapsed_time);
+                    $progressRow.find('.estimated-time').text(data.estimated_time);
+                    
+                    // 使用GSAP添加轻微的闪烁效果，提示用户进度有更新
+                    gsap.fromTo($progressRow, 
+                        { backgroundColor: "#E1EFFE" }, // 略微亮一点的蓝色
+                        { backgroundColor: "#EFF6FF", duration: 1, ease: "power2.out" } // 恢复正常
+                    );
+                }
+            }
+            
+            // 初始化 FilePond 并设置中文提示
+            const pond = FilePond.create(document.querySelector('input[type="file"]'), {
+                labelIdle: '拖放文件或 <span class="filepond--label-action">浏览</span>',
+                acceptedFileTypes: [
+                    // Word文档格式
+                    '.doc', '.docx', '.docm', '.dotm',
+                    // PDF文档格式
+                    '.pdf',
+                    // 文本文档格式
+                    '.txt', '.text',
+                    // CSV文档格式
+                    '.csv',
+                    // Excel文档格式
+                    '.xls', '.xlsx', '.xlsm',
+                    // Markdown文档格式
+                    '.md', '.markdown',
+                    // PowerPoint文档格式
+                    '.ppt', '.pptx', '.pptm'
+                ],
+                fileValidateTypeLabelExpectedTypes: '请上传支持的文档格式'
+            });
+
+            // 提交表单
+            $('#upload-form').submit(function(e) {
+                e.preventDefault();
+                const files = pond.getFiles();
+                if (files.length === 0) {
+                    showError('请先选择文件');
+                    return;
+                }
+                const formData = new FormData();
+                files.forEach(file => {
+                    formData.append('file', file.file);
+                });
+                
+                // 显示加载状态
+                pond.setOptions({
+                    disabled: true
+                });
+                $('button[type="submit"]').prop('disabled', true).text('处理中...');
+                
+                $.ajax({
+                    url: '/',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.task_id) {
+                            // 重置表单
+                            pond.removeFiles();
+                            hideError();
+                            
+                            // 使用SweetAlert2显示提交成功
+                            Swal.fire({
+                                title: '文件已提交',
+                                text: '开始处理中，可在任务列表中查看进度',
+                                icon: 'success',
+                                confirmButtonColor: '#3B82F6',
+                                confirmButtonText: '确定'
+                            });
+                            
+                            // 刷新任务列表
+                            fetchTasks();
+                        } else {
+                            showError('任务提交失败');
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = '提交失败';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMsg = xhr.responseJSON.error;
+                        }
+                        showError(errorMsg);
+                    },
+                    complete: function() {
+                        // 恢复表单状态
+                        pond.setOptions({
+                            disabled: false
+                        });
+                        $('button[type="submit"]').prop('disabled', false).text('提交');
+                    }
+                });
+            });
+
+            // 显示错误信息
+            function showError(message) {
+                Swal.fire({
+                    icon: 'error',
+                    title: '处理错误',
+                    text: message,
+                    confirmButtonColor: '#EF4444',
+                    confirmButtonText: '确定'
+                });
+            }
+            
+            // 隐藏错误信息，使用SweetAlert的方法关闭
+            function hideError() {
+                Swal.close();
+            }
+
+            // 获取任务列表
+            function fetchTasks() {
+                return new Promise((resolve, reject) => {
+                    $.getJSON('/tasks', function(data) {
+                        console.log('获取任务列表:', data);
+                        $('#running-tasks').empty();
+                        
+                        // 处理运行中的任务
+                        const runningTaskIds = [];
+                        $.each(data.running, function(taskId, task) {
+                            runningTaskIds.push(taskId);
+                            
+                            $('#running-tasks').append(
+                                `<tr class="hover:bg-gray-50 task-row" data-task-id="${taskId}">
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${task.filename}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${new Date(task.created_at).toLocaleString()}</td>
+                                </tr>`
+                            );
+                            
+                            // 保存任务进度信息以便后续渲染
+                            // 服务器现在直接返回格式化的进度信息
+                            if (typeof task.progress !== 'undefined') {
+                                taskProgress[taskId] = {
+                                    task_id: taskId,
+                                    progress: task.progress,
+                                    elapsed_time: task.elapsed_time,
+                                    estimated_time: task.estimated_time,
+                                    current: task.current,
+                                    total: task.total
+                                };
+                            }
+                        });
+                        
+                        // 先处理完所有任务行，然后再添加进度行，确保顺序正确
+                        // 延迟一点时间确保DOM更新完成
+                        setTimeout(() => {
+                            // 为每个运行中的任务检查是否有进度信息，有则显示
+                            runningTaskIds.forEach(taskId => {
+                                if (taskProgress[taskId]) {
+                                    updateTaskProgress(taskId);
+                                } else {
+                                    // 如果API没有返回进度信息，创建默认值（应该不会发生，因为现在总是返回进度）
+                                    console.log(`任务 ${taskId} 没有进度信息，创建初始进度`);
+                                    taskProgress[taskId] = {
+                                        task_id: taskId,
+                                        progress: 0,
+                                        elapsed_time: "0分0秒",
+                                        estimated_time: "计算中...",
+                                        current: 0,
+                                        total: 1
+                                    };
+                                    updateTaskProgress(taskId);
+                                }
+                            });
+                        }, 100);
+                        
+                        $('#completed-tasks').empty();
+                        
+                        // 处理已完成的任务
+                        $.each(data.completed, function(taskId, task) {
+                            $('#completed-tasks').append(
+                                `<tr class="hover:bg-gray-50">
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base"><button class="text-blue-500 hover:text-blue-700 hover:underline task-detail" data-task-id="${taskId}">${task.filename}</button></td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${new Date(task.created_at).toLocaleString()}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${new Date(task.completed_at).toLocaleString()}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">
+                                        <div class="status-capsule status-success">
+                                            <span class="status-capsule-text">成功</span>
+                                        </div>
+                                    </td>
+                                </tr>`
+                            );
+                        });
+                        
+                        // 处理失败的任务
+                        $.each(data.failed, function(taskId, task) {
+                            $('#completed-tasks').append(
+                                `<tr class="hover:bg-gray-50">
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base"><button class="text-blue-500 hover:text-blue-700 hover:underline task-detail" data-task-id="${taskId}">${task.filename}</button></td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${new Date(task.created_at).toLocaleString()}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">${new Date(task.completed_at).toLocaleString()}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base">
+                                        <div class="status-capsule status-failed">
+                                            <span class="status-capsule-text">失败</span>
+                                        </div>
+                                    </td>
+                                </tr>`
+                            );
+                        });
+                        resolve(); // 成功完成
+                    }).fail(function(jqXHR, textStatus, errorThrown) {
+                        showError('获取任务列表失败');
+                        reject(errorThrown); // 失败时拒绝
+                    });
+                });
+            }
+
+            // 获取并显示任务详情
+            function fetchTaskDetails(taskId) {
+                $.getJSON(`/task/${taskId}`, function(data) {
+                    $('#task-details').empty();
+                    
+                    // 自定义任务详情模态框标题和表头，根据任务状态设置
+                    let modalTitle = '任务详情';
+                    let tableHeaders = `
+                        <tr class="text-left">
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base">选择</th>
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base w-5/12">纠错前</th>
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base w-5/12">纠错后</th>
+                        </tr>
+                    `;
+                    
+                    // 检查任务状态
+                    if (data.status === 'failed') {
+                        // 更新标题和表头
+                        modalTitle = '任务详情 - 处理失败';
+                        tableHeaders = `
+                            <tr class="text-left">
+                                <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base" colspan="3">错误信息</th>
+                            </tr>
+                        `;
+                        
+                        // 显示错误信息
+                        let errorMsg = '处理失败';
+                        let errorType = '';
+                        
+                        // 从API响应格式中获取错误信息
+                        if (data.error) {
+                            errorMsg = data.error;
+                            if (data.error_type) {
+                                errorType = `(${data.error_type})`;
+                            }
+                        } else if (data.result && typeof data.result === 'object' && data.result.error) {
+                            // 兼容旧格式
+                            errorMsg = data.result.error;
+                            if (data.result.error_type) {
+                                errorType = `(${data.result.error_type})`;
+                            }
+                        }
+                        
+                        $('#task-details').append(
+                            `<tr class="hover:bg-gray-50">
+                                <td colspan="3" class="py-3 px-2 sm:px-3 md:px-4">
+                                    <div class="flex flex-col items-center p-3 sm:p-4 md:p-6 bg-red-50 rounded-lg border border-red-200">
+                                        <svg class="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <h3 class="text-lg sm:text-xl font-bold text-red-700 mb-1 sm:mb-2 text-center">处理失败</h3>
+                                        ${errorType ? `<p class="text-red-600 mb-1 sm:mb-2 font-medium text-center">${errorType}</p>` : ''}
+                                        <p class="text-center text-red-600 text-sm sm:text-base break-words w-full max-w-full">${errorMsg}</p>
+                                    </div>
+                                </td>
+                            </tr>`
+                        );
+                        
+                        // 对于失败任务，隐藏导出按钮
+                        $('#export-json').addClass('hidden');
+                    } else if (data.result && Array.isArray(data.result)) {
+                        // 显示正常纠错结果，显示导出按钮
+                        $('#export-json').removeClass('hidden');
+                        
+                        if (data.result.length > 0) {
+                            $.each(data.result, function(index, correction) {
+                                // 使用highlightDifferences高亮显示差异
+                                const highlighted = highlightDifferences(correction.theorigin, correction.corrected);
+                                
+                                // 创建单元格元素并存储原始文本
+                                const row = $(`<tr class="hover:bg-gray-50">
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base"><input type="checkbox" class="select-item w-4 h-4" checked></td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base break-words">${highlighted.highlightedOriginal}</td>
+                                    <td class="py-2 px-3 md:px-4 text-sm md:text-base break-words">${highlighted.highlightedCorrected}</td>
+                                </tr>`);
+                                
+                                // 将原始文本存储在data属性中
+                                row.find('td').eq(1).data('original-text', correction.theorigin);
+                                row.find('td').eq(2).data('corrected-text', correction.corrected);
+                                
+                                // 添加到任务详情表格
+                                $('#task-details').append(row);
+                            });
+                        } else {
+                            $('#task-details').append(
+                                `<tr class="hover:bg-gray-50">
+                                    <td colspan="3" class="py-2 px-3 md:px-4 text-sm md:text-base text-center">没有找到需要纠错的内容</td>
+                                </tr>`
+                            );
+                        }
+                    } else {
+                        // 对于其他状态，隐藏导出按钮
+                        $('#export-json').addClass('hidden');
+                        
+                        $('#task-details').append(
+                            `<tr class="hover:bg-gray-50">
+                                <td colspan="3" class="py-2 px-3 md:px-4 text-sm md:text-base text-center">没有找到纠错数据</td>
+                            </tr>`
+                        );
+                    }
+                    
+                    // 更新模态框标题和表头
+                    $('#task-modal-content h3').text(modalTitle);
+                    $('#task-modal table thead').html(tableHeaders);
+                    
+                    // 显示模态框
+                    $('#task-modal').removeClass('hidden');
+                    gsap.fromTo("#task-modal-content", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power2.out" });
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    // 处理API请求失败的情况，通过模态框展示
+                    $('#task-details').empty();
+                    $('#task-modal-content h3').text('任务详情 - 请求失败');
+                    $('#task-modal table thead').html(`
+                        <tr class="text-left">
+                            <th class="py-2 px-2 sm:px-3 md:px-4 text-xs sm:text-sm md:text-base" colspan="3">错误信息</th>
+                        </tr>
+                    `);
+                    
+                    $('#task-details').append(
+                        `<tr class="hover:bg-gray-50">
+                            <td colspan="3" class="py-3 px-2 sm:px-3 md:px-4">
+                                <div class="flex flex-col items-center p-3 sm:p-4 md:p-6 bg-red-50 rounded-lg border border-red-200">
+                                    <svg class="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    <h3 class="text-lg sm:text-xl font-bold text-red-700 mb-1 sm:mb-2 text-center">请求错误</h3>
+                                    <p class="text-center text-red-600 text-sm sm:text-base break-words w-full max-w-full">无法获取任务详情，请稍后再试</p>
+                                </div>
+                            </td>
+                        </tr>`
+                    );
+                    
+                    // 隐藏导出按钮
+                    $('#export-json').addClass('hidden');
+                    
+                    // 显示模态框
+                    $('#task-modal').removeClass('hidden');
+                    gsap.fromTo("#task-modal-content", { scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power2.out" });
+                });
+            }
+
+            // 导出选中项为 JSON
+            $('#export-json').click(function() {
+                let selectedCorrections = [];
+                $('#task-details tr').each(function() {
+                    if ($(this).find('.select-item').is(':checked')) {
+                        // 获取单元格中的文本，去除HTML标签
+                        let theoriginCell = $(this).find('td').eq(1);
+                        let correctedCell = $(this).find('td').eq(2);
+                        
+                        // 从元素的data属性获取原始文本，如果不存在则使用文本内容并删除HTML标签
+                        let theorigin = theoriginCell.data('original-text') || theoriginCell.text().replace(/<\/?[^>]+(>|$)/g, "");
+                        let corrected = correctedCell.data('corrected-text') || correctedCell.text().replace(/<\/?[^>]+(>|$)/g, "");
+                        
+                        if (theorigin && corrected) {
+                            selectedCorrections.push({ theorigin, corrected });
+                        }
+                    }
+                });
+                
+                if (selectedCorrections.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: '提示',
+                        text: '没有选中任何纠错项',
+                        confirmButtonColor: '#3B82F6',
+                        confirmButtonText: '确定'
+                    });
+                    return;
+                }
+                
+                const blob = new Blob([JSON.stringify(selectedCorrections, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'corrections.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            // 关闭任务详情卡片
+            $('#close-modal').click(function() {
+                gsap.to("#task-modal-content", { scale: 0.5, opacity: 0, duration: 0.3, ease: "power2.in", onComplete: function() {
+                    $('#task-modal').addClass('hidden');
+                }});
+            });
+
+            // 任务详情弹出框
+            $(document).on('click', '.task-detail', function() {
+                const taskId = $(this).data('task-id');
+                fetchTaskDetails(taskId);
+            });
+
+            // 添加刷新按钮的点击事件
+            $('#refresh-running-tasks, #refresh-completed-tasks').click(function() {
+                // 显示加载提示
+                const $button = $(this);
+                const originalIcon = $button.html();
+                $button.html('<i class="fas fa-spinner fa-spin fa-lg"></i>');
+                $button.prop('disabled', true);
+                
+                // 刷新任务列表
+                fetchTasks().then(function() {
+                    // 恢复按钮状态
+                    setTimeout(function() {
+                        $button.html(originalIcon);
+                        $button.prop('disabled', false);
+                    }, 500); // 给用户一个明显的刷新反馈
+                }).catch(function() {
+                    // 发生错误时也恢复按钮状态
+                    $button.html(originalIcon);
+                    $button.prop('disabled', false);
+                });
+            });
+
+            // 初始化任务列表
+            fetchTasks();
+            
+            // 比较并高亮文本差异
+            function highlightDifferences(originalText, correctedText) {
+                // 如果文本完全相同，返回原始文本
+                if (originalText === correctedText) {
+                    return {
+                        highlightedOriginal: originalText,
+                        highlightedCorrected: correctedText
+                    };
+                }
+                
+                // 按字符拆分文本
+                const origChars = originalText.split('');
+                const corrChars = correctedText.split('');
+                
+                // 计算最长公共子序列长度的矩阵
+                const m = origChars.length;
+                const n = corrChars.length;
+                const lcsMatrix = Array(m + 1).fill().map(() => Array(n + 1).fill(0));
+                
+                // 填充LCS矩阵
+                for (let i = 1; i <= m; i++) {
+                    for (let j = 1; j <= n; j++) {
+                        if (origChars[i - 1] === corrChars[j - 1]) {
+                            lcsMatrix[i][j] = lcsMatrix[i - 1][j - 1] + 1;
+                        } else {
+                            lcsMatrix[i][j] = Math.max(lcsMatrix[i - 1][j], lcsMatrix[i][j - 1]);
+                        }
+                    }
+                }
+                
+                // 追踪差异
+                let i = m, j = n;
+                const diff = [];
+                
+                while (i > 0 || j > 0) {
+                    if (i > 0 && j > 0 && origChars[i - 1] === corrChars[j - 1]) {
+                        // 相同字符
+                        diff.unshift({ char: origChars[i - 1], type: 'same' });
+                        i--; j--;
+                    } else if (j > 0 && (i === 0 || lcsMatrix[i][j - 1] >= lcsMatrix[i - 1][j])) {
+                        // 添加字符
+                        diff.unshift({ char: corrChars[j - 1], type: 'added' });
+                        j--;
+                    } else if (i > 0 && (j === 0 || lcsMatrix[i][j - 1] < lcsMatrix[i - 1][j])) {
+                        // 删除字符
+                        diff.unshift({ char: origChars[i - 1], type: 'removed' });
+                        i--;
+                    }
+                }
+                
+                // 构建高亮HTML
+                let highlightedOriginal = '';
+                let highlightedCorrected = '';
+                
+                // 处理连续的相同类型差异
+                let origBuffer = '';
+                let corrBuffer = '';
+                let lastType = '';
+                
+                for (let i = 0; i < diff.length; i++) {
+                    const { char, type } = diff[i];
+                    
+                    if (type !== lastType && i > 0) {
+                        // 根据之前的类型处理之前的缓冲区
+                        if (lastType === 'same') {
+                            highlightedOriginal += origBuffer;
+                            highlightedCorrected += corrBuffer;
+                        } else if (lastType === 'added') {
+                            highlightedCorrected += `<span class="diff-added">${corrBuffer}</span>`;
+                        } else if (lastType === 'removed') {
+                            highlightedOriginal += `<span class="diff-removed">${origBuffer}</span>`;
+                        } else if (lastType === 'modified') {
+                            highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
+                            highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                        }
+                        
+                        // 重置缓冲区
+                        origBuffer = '';
+                        corrBuffer = '';
+                    }
+                    
+                    // 根据当前类型将字符添加到适当的缓冲区
+                    if (type === 'same') {
+                        origBuffer += char;
+                        corrBuffer += char;
+                    } else if (type === 'added') {
+                        corrBuffer += char;
+                    } else if (type === 'removed') {
+                        origBuffer += char;
+                    }
+                    
+                    // 修改模式：当前删除和下一个添加可能是修改
+                    if (type === 'removed' && i + 1 < diff.length && diff[i + 1].type === 'added') {
+                        origBuffer += diff[i].char;
+                        corrBuffer += diff[i + 1].char;
+                        diff[i].type = 'modified';
+                        diff[i + 1].type = 'modified';
+                        lastType = 'modified';
+                        i++; // 跳过下一个字符，因为已经处理了
+                        continue;
+                    }
+                    
+                    lastType = type;
+                }
+                
+                // 处理最后的缓冲区
+                if (origBuffer || corrBuffer) {
+                    if (lastType === 'same') {
+                        highlightedOriginal += origBuffer;
+                        highlightedCorrected += corrBuffer;
+                    } else if (lastType === 'added') {
+                        highlightedCorrected += `<span class="diff-added">${corrBuffer}</span>`;
+                    } else if (lastType === 'removed') {
+                        highlightedOriginal += `<span class="diff-removed">${origBuffer}</span>`;
+                    } else if (lastType === 'modified') {
+                        highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
+                        highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                    }
+                }
+                
+                return {
+                    highlightedOriginal,
+                    highlightedCorrected
+                };
+            }
+            
+            // 添加窗口大小变化监听，优化响应式体验
+            $(window).resize(function() {
+                AOS.refresh();
+            });
+        });
+    </script>
+</body>
+</html> 

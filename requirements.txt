@@ -1,0 +1,30 @@
+# 共享依赖 - 所有平台都需要
+flask
+flask-socketio
+apscheduler
+PyPDF2
+python-docx
+docx2txt
+chardet
+openpyxl
+markdown
+html2text
+python-pptx
+sqlalchemy
+requests
+
+# 平台特定依赖 - 仅Windows
+pywin32; platform_system == "Windows"
+pypiwin32; platform_system == "Windows"
+
+# 注意：以下工具需手动安装，不包含在requirements中
+# =============================================
+# 1. textract (可选，用于增强文本提取功能)
+#    由于依赖问题，需使用pip<24.1版本安装：
+#    pip install pip==23.3.2
+#    pip install textract
+#
+# 2. Linux特定工具 (通过包管理器安装)：
+#    - antiword: sudo apt-get install antiword
+#    - catdoc: sudo apt-get install catdoc
+#    - libreoffice: sudo apt-get install libreoffice
