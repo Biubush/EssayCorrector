@@ -8,16 +8,23 @@
 
 set -e
 
+# 创建必要的目录
+mkdir -p /app/database
+mkdir -p $TEMP_FOLDER
+
+echo "=== 论文纠错系统启动 ==="
+echo "工作模式: ${MODE:-production}"
+
 # 检测运行模式
 if [ "$MODE" = "development" ]; then
-    echo "以开发模式启动应用..."
+    echo "使用开发模式启动..."
     exec python app.py
 else
-    echo "以生产模式启动应用..."
+    echo "使用生产模式启动..."
     # 启动gunicorn
     exec gunicorn --worker-class eventlet \
                  -w 1 \
-                 --bind 0.0.0.0:${PORT:-8329} \
+                 --bind ${HOST:-0.0.0.0}:${PORT:-8329} \
                  --log-level info \
                  --access-logfile - \
                  --error-logfile - \

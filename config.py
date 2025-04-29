@@ -24,8 +24,14 @@ PORT = int(os.environ.get('PORT', 8329))  # 服务器监听的端口号
 # 临时文件夹配置
 TEMP_FOLDER = os.environ.get('TEMP_FOLDER', os.path.join(tempfile.gettempdir(), "essay_corrector_temp"))  # 临时文件存储路径
 
+# 确保数据库目录存在
+DB_FOLDER = "database"
+if not os.path.exists(DB_FOLDER):
+    os.makedirs(DB_FOLDER)
+    print(f"已创建数据库目录: {DB_FOLDER}")
+
 # 数据库配置
-DATABASE_URI = os.environ.get('DATABASE_URI', 'sqlite:///tasks.db')  # SQLite数据库连接URI
+DATABASE_URI = os.environ.get('DATABASE_URI', 'sqlite:///database/tasks.db')  # SQLite数据库连接URI
 
 # AI配置
 AI_API_KEY = os.environ.get('AI_API_KEY', "sk-xxxxxxxxxxxxxxxxxxxxxxxxx")  # AI API密钥
