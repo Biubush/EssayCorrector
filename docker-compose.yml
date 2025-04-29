@@ -11,7 +11,7 @@ services:
       - "8329:8329"
     volumes:
       # 持久化存储数据库
-      - ./data:/app/data
+      - ./tasks.db:/app/tasks.db
       # 持久化存储临时文件
       - essay_corrector_temp:/tmp/essay_corrector_temp
       # 提示词文件挂载 - 注意此文件可以包含复杂格式，系统已兼容
@@ -24,7 +24,7 @@ services:
       - MODE=production
       # 应用配置
       # - DEBUG=False
-      # - DATABASE_URI=sqlite:///data/tasks.db
+      # - DATABASE_URI=sqlite:///tasks.db
       # AI相关配置
       # - AI_API_KEY=your_api_key_here
       # - AI_MODEL=deepseek-chat

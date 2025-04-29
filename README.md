@@ -135,6 +135,10 @@ environment:
   - AI_API_KEY=your_api_key_here  # 设置您的DeepSeek API密钥
   - AI_MODEL=deepseek-chat  # 选择使用的AI模型
   - PROMPTS_FILE=/app/custom_prompts.txt  # 自定义提示词文件路径
+
+volumes:
+  # 持久化存储数据库
+  - ./tasks.db:/app/tasks.db
 ```
 
 如果您需要修改配置，请直接编辑`docker-compose.yml`文件，然后重新启动容器：
@@ -474,6 +478,7 @@ python install.py --venv-dir custom_env --with-textract
 | `CLEANUP_INTERVAL_HOURS` | 临时文件清理间隔（小时） | 24 |
 | `MAX_CHARS_PER_PARAGRAPH` | 段落合并的最大字符数 | 3000 |
 | `PRINT_CONFIG` | 是否在启动时打印配置 | False |
+| `DATABASE_URI` | 数据库连接URI | sqlite:///tasks.db |
 
 ## 使用指南
 

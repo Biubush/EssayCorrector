@@ -173,12 +173,12 @@ deploy:
 ```yaml
 volumes:
   # 持久化存储数据库
-  - ./data:/app/data
+  - ./tasks.db:/app/tasks.db
   # 持久化存储临时文件
   - essay_corrector_temp:/tmp/essay_corrector_temp
 ```
 
-数据库文件存储在项目的`data`目录中，临时文件存储在Docker卷中。
+数据库文件直接存储在项目根目录的`tasks.db`文件中，临时文件存储在Docker卷中。
 
 ## 常用操作
 

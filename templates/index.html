@@ -1090,6 +1090,41 @@
                 let highlightedOriginal = '';
                 let highlightedCorrected = '';
                 
+                // 预处理：将连续的删除+添加标记为修改
+                for (let i = 0; i < diff.length; i++) {
+                    if (diff[i].type === 'removed') {
+                        // 查找后续的添加序列
+                        let j = i + 1;
+                        let removedCount = 1;
+                        while (j < diff.length && diff[j].type === 'removed') {
+                            removedCount++;
+                            j++;
+                        }
+                        
+                        // 检查是否有连续的添加序列
+                        let addedCount = 0;
+                        let k = j;
+                        while (k < diff.length && diff[k].type === 'added') {
+                            addedCount++;
+                            k++;
+                        }
+                        
+                        // 如果有连续的删除和添加，将它们标记为修改
+                        if (addedCount > 0) {
+                            // 将删除内容标记为修改-删除类型
+                            for (let x = i; x < i + removedCount; x++) {
+                                diff[x].type = 'modified-removed';
+                            }
+                            // 将添加内容标记为修改-添加类型
+                            for (let x = j; x < j + addedCount; x++) {
+                                diff[x].type = 'modified-added';
+                            }
+                            // 跳过已处理的添加序列
+                            i = j + addedCount - 1;
+                        }
+                    }
+                }
+                
                 // 处理连续的相同类型差异
                 let origBuffer = '';
                 let corrBuffer = '';
@@ -1107,9 +1142,14 @@
                             highlightedCorrected += `<span class="diff-added">${corrBuffer}</span>`;
                         } else if (lastType === 'removed') {
                             highlightedOriginal += `<span class="diff-removed">${origBuffer}</span>`;
-                        } else if (lastType === 'modified') {
-                            highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
-                            highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                        } else if (lastType === 'modified-removed' || lastType === 'modified-added') {
+                            // 修改类型具有同样的高亮样式
+                            if (origBuffer) {
+                                highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
+                            }
+                            if (corrBuffer) {
+                                highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                            }
                         }
                         
                         // 重置缓冲区
@@ -1125,17 +1165,12 @@
                         corrBuffer += char;
                     } else if (type === 'removed') {
                         origBuffer += char;
-                    }
-                    
-                    // 修改模式：当前删除和下一个添加可能是修改
-                    if (type === 'removed' && i + 1 < diff.length && diff[i + 1].type === 'added') {
-                        origBuffer += diff[i].char;
-                        corrBuffer += diff[i + 1].char;
-                        diff[i].type = 'modified';
-                        diff[i + 1].type = 'modified';
-                        lastType = 'modified';
-                        i++; // 跳过下一个字符，因为已经处理了
-                        continue;
+                    } else if (type === 'modified-removed') {
+                        // 修改-删除类型只添加到原始文本
+                        origBuffer += char;
+                    } else if (type === 'modified-added') {
+                        // 修改-添加类型只添加到修改后文本
+                        corrBuffer += char;
                     }
                     
                     lastType = type;
@@ -1150,9 +1185,14 @@
                         highlightedCorrected += `<span class="diff-added">${corrBuffer}</span>`;
                     } else if (lastType === 'removed') {
                         highlightedOriginal += `<span class="diff-removed">${origBuffer}</span>`;
-                    } else if (lastType === 'modified') {
-                        highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
-                        highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                    } else if (lastType === 'modified-removed' || lastType === 'modified-added') {
+                        // 修改类型具有同样的高亮样式
+                        if (origBuffer) {
+                            highlightedOriginal += `<span class="diff-modified">${origBuffer}</span>`;
+                        }
+                        if (corrBuffer) {
+                            highlightedCorrected += `<span class="diff-modified">${corrBuffer}</span>`;
+                        }
                     }
                 }
                 

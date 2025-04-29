@@ -20,7 +20,7 @@ environment:
   - HOST=0.0.0.0                    # 服务器监听的IP地址
   - PORT=8329                       # 服务器监听的端口号
   - TEMP_FOLDER=/tmp/essay_corrector_temp  # 临时文件存储路径
-  - DATABASE_URI=sqlite:///data/tasks.db   # 数据库连接URI
+  - DATABASE_URI=sqlite:///tasks.db   # 数据库连接URI
 ```
 
 ### AI相关配置
@@ -196,7 +196,7 @@ environment:
 | HOST | 服务器监听的IP地址 | 0.0.0.0 | 127.0.0.1 |
 | PORT | 服务器监听的端口号 | 8329 | 8080 |
 | TEMP_FOLDER | 临时文件存储路径 | tempfile.gettempdir()/essay_corrector_temp | /app/temp |
-| DATABASE_URI | 数据库连接URI | sqlite:///tasks.db | sqlite:///data/db.sqlite |
+| DATABASE_URI | 数据库连接URI | sqlite:///tasks.db | sqlite:///custom.db |
 | AI_API_KEY | AI API密钥 | sk-d308f9abe71e4127980612c6aa5cfd19 | your_key_here |
 | AI_MODEL | AI模型名称 | deepseek-chat | deepseek-reasoner |
 | PROMPTS_FILE | 提示词文件路径 | prompts.txt | /app/custom_prompts.txt |
