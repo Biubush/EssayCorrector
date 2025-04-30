@@ -79,6 +79,9 @@ CLEANUP_INTERVAL_HOURS = int(os.environ.get('CLEANUP_INTERVAL_HOURS', 24))  # �
 # 文本处理配置
 MAX_CHARS_PER_PARAGRAPH = int(os.environ.get('MAX_CHARS_PER_PARAGRAPH', 3000))  # 段落合并的最大字符数 
 
+# 并行处理配置
+MAX_WORKERS = int(os.environ.get('MAX_WORKERS', 5))  # 并行处理的最大线程数，默认为5
+
 # 调试信息
 if os.environ.get('PRINT_CONFIG', 'False').lower() in ('true', '1', 't'):
     print("当前配置:")
@@ -92,4 +95,6 @@ if os.environ.get('PRINT_CONFIG', 'False').lower() in ('true', '1', 't'):
     print(f"PROMPTS_FILE: {PROMPTS_FILE}")
     print(f"ALLOWED_EXTENSIONS: {ALLOWED_EXTENSIONS}")
     print(f"CLEANUP_INTERVAL_HOURS: {CLEANUP_INTERVAL_HOURS}")
-    print(f"MAX_CHARS_PER_PARAGRAPH: {MAX_CHARS_PER_PARAGRAPH}") 
+    print(f"MAX_CHARS_PER_PARAGRAPH: {MAX_CHARS_PER_PARAGRAPH}")
+
+    print(f"MAX_WORKERS: {MAX_WORKERS}") 

@@ -33,6 +33,8 @@ services:
       # - CLEANUP_INTERVAL_HOURS=24
       # 文本处理配置
       # - MAX_CHARS_PER_PARAGRAPH=3000
+      # 并行处理配置
+      # - MAX_WORKERS=5
       # 是否打印配置信息
       # - PRINT_CONFIG=True
     restart: unless-stopped

@@ -26,6 +26,7 @@ from datetime import datetime
 from flask_socketio import SocketIO
 import atexit
 from apscheduler.schedulers.background import BackgroundScheduler
+import config
 from config import (
     DEBUG, HOST, PORT, TEMP_FOLDER, 
     AI_API_KEY, AI_MODEL, ALLOWED_EXTENSIONS, 
@@ -200,9 +201,13 @@ def process_task(task_id, file_path):
             corrector = Corrector(data_processor, ai_solver)
             # 设置进度回调
             corrector.set_progress_callback(progress_callback)
-            # 执行纠错，传入任务ID以便进度回调
-            print(f"[任务 {task_id}] 开始执行文档纠错")
-            output_json = corrector.correct(task_id=task_id)
+            # 执行纠错，传入任务ID以便进度回调，并指定最大工作线程数
+            print(f"[任务 {task_id}] 开始执行文档纠错，使用并行处理")
+            # 使用配置中的最大工作线程数（如果存在）
+            max_workers = getattr(config, 'MAX_WORKERS', None)
+            if max_workers:
+                print(f"[任务 {task_id}] 使用配置的最大线程数: {max_workers}")
+            output_json = corrector.correct(task_id=task_id, max_workers=max_workers)
             print(f"[任务 {task_id}] 文档纠错完成，检测到 {len(output_json)} 个纠错项")
         except Exception as e:
             print(f"[任务 {task_id}] 执行纠错过程失败: {str(e)}")

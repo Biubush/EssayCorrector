@@ -16,6 +16,7 @@ import json
 import re
 import time
 import os
+import concurrent.futures
 from core.data_processor import DocumentProcessor
 from core.AI_solver import AISolver
 from config import PROMPTS_FILE, DEFAULT_PROMPTS
@@ -95,12 +96,13 @@ class Corrector:
         """
         self.progress_callback = callback
 
-    def correct(self, task_id=None):
+    def correct(self, task_id=None, max_workers=None):
         """
-        执行文档处理和校正操作。
+        执行文档处理和校正操作，使用并行处理提高效率。
 
         Args:
             task_id (str, optional): 任务ID，用于进度通知。
+            max_workers (int, optional): 最大工作线程数，默认为None(由系统决定)。
 
         Returns:
             list: 包含 AI 校正后的json列表，格式为[{"theorigin":"原句","corrected":"修正句"},...]。
@@ -118,35 +120,17 @@ class Corrector:
             if paragraphs is None:
                 raise ValueError("文档处理失败，无法进行校正")
             
-            corrected_paragraphs = []
+            corrected_paragraphs = [None] * len(paragraphs)  # 预分配结果列表
             total_paragraphs = len(paragraphs)
             start_time = time.time()
-
-            if paragraphs:
-                for idx, paragraph in enumerate(paragraphs):
-                    # 计算进度
-                    progress_percent = round((idx / total_paragraphs) * 100, 2)
-                    
-                    # 计算预计剩余时间（秒）
-                    elapsed_time = time.time() - start_time
-                    if idx > 0:  # 避免除零错误
-                        time_per_paragraph = elapsed_time / idx
-                        remaining_paragraphs = total_paragraphs - idx
-                        estimated_time_remaining = remaining_paragraphs * time_per_paragraph
-                    else:
-                        estimated_time_remaining = 0
-                    
-                    # 如果有进度回调函数，调用它
-                    if self.progress_callback and task_id:
-                        print(f"发送进度更新 - 任务ID: {task_id}, 进度: {progress_percent}%, 当前: {idx+1}/{total_paragraphs}")
-                        self.progress_callback(
-                            task_id=task_id,
-                            progress=progress_percent,
-                            elapsed_time=round(elapsed_time),
-                            estimated_time=round(estimated_time_remaining),
-                            current=idx + 1,
-                            total=total_paragraphs
-                        )
+            
+            # 用于跟踪已完成的段落数量
+            completed_count = 0
+            
+            # 定义处理单个段落的函数
+            def process_paragraph(idx_paragraph):
+                idx, paragraph = idx_paragraph
+                try:
                     # 为每个段落创建消息
                     messages = [
                         {"role": "system", "content": self.prompts},
@@ -210,24 +194,77 @@ class Corrector:
 
                     if corrected_content.startswith("请求失败"):
                         raise RuntimeError(f"AI服务请求失败: {corrected_content}")
-                    corrected_paragraphs.append(corrected_content)
+                    
+                    return idx, corrected_content
+                except Exception as e:
+                    print(f"处理段落 {idx+1} 时出错: {str(e)}")
+                    return idx, f"处理错误: {str(e)}"
+            
+            # 使用线程池并行处理段落
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 提交所有任务
+                future_to_idx = {
+                    executor.submit(process_paragraph, (idx, paragraph)): idx 
+                    for idx, paragraph in enumerate(paragraphs)
+                }
                 
-                # 最后一次更新进度为100%
-                if self.progress_callback and task_id:
+                # 处理完成的任务并更新进度
+                for future in concurrent.futures.as_completed(future_to_idx):
+                    completed_count += 1
+                    
+                    # 获取处理结果
+                    try:
+                        idx, result = future.result()
+                        corrected_paragraphs[idx] = result
+                    except Exception as e:
+                        idx = future_to_idx[future]
+                        print(f"段落 {idx+1} 处理失败: {str(e)}")
+                        corrected_paragraphs[idx] = f"处理失败: {str(e)}"
+                    
+                    # 计算进度和预计剩余时间
+                    progress_percent = round((completed_count / total_paragraphs) * 100, 2)
                     elapsed_time = time.time() - start_time
-                    self.progress_callback(
-                        task_id=task_id,
-                        progress=100,
-                        elapsed_time=round(elapsed_time),
-                        estimated_time=0,
-                        current=total_paragraphs,
-                        total=total_paragraphs
-                    )
-                
+                    
+                    if completed_count > 0:  # 避免除零错误
+                        time_per_paragraph = elapsed_time / completed_count
+                        remaining_paragraphs = total_paragraphs - completed_count
+                        estimated_time_remaining = remaining_paragraphs * time_per_paragraph
+                    else:
+                        estimated_time_remaining = 0
+                    
+                    # 如果有进度回调函数，调用它
+                    if self.progress_callback and task_id:
+                        print(f"发送进度更新 - 任务ID: {task_id}, 进度: {progress_percent}%, 当前: {completed_count}/{total_paragraphs}")
+                        self.progress_callback(
+                            task_id=task_id,
+                            progress=progress_percent,
+                            elapsed_time=round(elapsed_time),
+                            estimated_time=round(estimated_time_remaining),
+                            current=completed_count,
+                            total=total_paragraphs
+                        )
+            
+            # 最后一次更新进度为100%
+            if self.progress_callback and task_id:
+                elapsed_time = time.time() - start_time
+                self.progress_callback(
+                    task_id=task_id,
+                    progress=100,
+                    elapsed_time=round(elapsed_time),
+                    estimated_time=0,
+                    current=total_paragraphs,
+                    total=total_paragraphs
+                )
+            
             # 将校正后的段落转换为 JSON 格式并合并
             all_corrections = []
             for i, paragraph in enumerate(corrected_paragraphs):
                 try:
+                    # 跳过错误的段落
+                    if paragraph is None or isinstance(paragraph, str) and paragraph.startswith("处理"):
+                        print(f"跳过处理失败的段落 {i+1}: {paragraph}")
+                        continue
+                    
                     # 打印当前正在处理的段落内容前100个字符
                     print(f"处理第{i+1}段JSON内容: {paragraph[:100]}...")
                     

@@ -420,7 +420,16 @@ python install.py --venv-dir custom_env --with-textract
   MAX_CHARS_PER_PARAGRAPH = 3000  # 段落合并的最大字符数
   ```
 
-- **定时任务配置**：
+### 性能优化配置
+
+- **并行处理配置**：
+  ```python
+  MAX_WORKERS = 5  # 并行处理的最大线程数，用于提高文档处理效率
+  ```
+
+### 定时任务配置
+
+- **清理任务配置**：
   ```python
   CLEANUP_INTERVAL_HOURS = 24  # 临时文件清理的时间间隔（小时）
   ```

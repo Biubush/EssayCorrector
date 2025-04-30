@@ -41,6 +41,7 @@ environment:
   
   # 文本处理配置
   - MAX_CHARS_PER_PARAGRAPH=3000    # 段落合并的最大字符数
+  - MAX_WORKERS=5                   # 并行处理的最大线程数
 ```
 
 ### AI提示词配置
@@ -175,6 +176,7 @@ environment:
   - MODE=production
   - AI_API_KEY=your_production_key
   - CLEANUP_INTERVAL_HOURS=48
+  - MAX_WORKERS=8                   # 设置较大的线程数提高处理效率
 ```
 
 ### 开发环境配置示例
@@ -184,6 +186,7 @@ environment:
   - DEBUG=True
   - MODE=development
   - PRINT_CONFIG=True
+  - MAX_WORKERS=3                   # 减少并发数以便于调试
 ```
 
 ## 所有可配置的环境变量
@@ -202,6 +205,7 @@ environment:
 | PROMPTS_FILE | 提示词文件路径 | prompts.txt | /app/custom_prompts.txt |
 | CLEANUP_INTERVAL_HOURS | 临时文件清理间隔(小时) | 24 | 48 |
 | MAX_CHARS_PER_PARAGRAPH | 段落合并的最大字符数 | 3000 | 5000 |
+| MAX_WORKERS | 并行处理的最大线程数 | 5 | 8 |
 | PRINT_CONFIG | 是否打印配置信息 | False | True |
 | MODE | 容器运行模式 | production | development | 
 
